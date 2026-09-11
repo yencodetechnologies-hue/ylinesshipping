@@ -1,13 +1,26 @@
 import { useEffect, useState } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
 import Splash from "./components/Splash";
 import Navbar from "./components/Navbar";
-import HeroCarousel from "./components/HeroCarousel";
-import ActionBar from "./components/ActionBar";
-import ServiceGrid from "./components/ServiceGrid";
-import FeaturedCompanies from "./components/FeaturedCompanies";
-import ListCompanyCTA from "./components/ListCompanyCTA";
-import PartnersMarquee from "./components/PartnersMarquee";
-import Footer from "./components/Footer";
+import Home from "./pages/Home";
+import Register from "./pages/Register";
+
+function ScrollToHash() {
+  const { pathname, hash } = useLocation();
+
+  useEffect(() => {
+    if (hash) {
+      const id = hash.slice(1);
+      const t = setTimeout(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+      }, 80);
+      return () => clearTimeout(t);
+    }
+    window.scrollTo(0, 0);
+  }, [pathname, hash]);
+
+  return null;
+}
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -20,16 +33,12 @@ export default function App() {
   return (
     <>
       <Splash visible={showSplash} />
+      <ScrollToHash />
       <Navbar />
-      <main className="flex-1 bg-app-bg">
-        <HeroCarousel />
-        <ActionBar />
-        <ServiceGrid />
-        <FeaturedCompanies />
-        <ListCompanyCTA />
-        <PartnersMarquee />
-      </main>
-      <Footer />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/register" element={<Register />} />
+      </Routes>
     </>
   );
 }
