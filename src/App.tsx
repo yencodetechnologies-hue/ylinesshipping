@@ -4,6 +4,7 @@ import Splash from "./components/Splash";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Register from "./pages/Register";
+import PostEnquiry from "./pages/PostEnquiry";
 
 function ScrollToHash() {
   const { pathname, hash } = useLocation();
@@ -38,6 +39,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/post-enquiry" element={<PostEnquiry />} />
       </Routes>
     </>
   );

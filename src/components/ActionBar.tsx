@@ -1,4 +1,5 @@
 import { PlusCircle, Search, Send } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function ActionBar() {
   return (
@@ -18,9 +19,12 @@ export default function ActionBar() {
         </label>
 
         <div className="flex gap-2 sm:shrink-0">
-          <button className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-secondary-dark sm:flex-none sm:text-sm">
+          <Link
+            to="/post-enquiry"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-secondary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-secondary-dark sm:flex-none sm:text-sm"
+          >
             <PlusCircle size={16} /> Post Enquiry
-          </button>
+          </Link>
           <button className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-primary-light sm:flex-none sm:text-sm">
             <Send size={15} /> Send Enquiry
           </button>
