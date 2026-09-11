@@ -17,7 +17,7 @@ import {
   TrendingUp,
   User,
 } from "lucide-react";
-import { businessTypes } from "../data/businessTypes";
+import { businessTypes, OTHER_BUSINESS_TYPE } from "../data/businessTypes";
 
 const perks = [
   { icon: Globe2, text: "List your services in front of shippers worldwide" },
@@ -36,6 +36,7 @@ interface FormState {
   fullName: string;
   companyName: string;
   businessType: string;
+  businessTypeOther: string;
   email: string;
   phone: string;
   city: string;
@@ -48,6 +49,7 @@ const initialForm: FormState = {
   fullName: "",
   companyName: "",
   businessType: "",
+  businessTypeOther: "",
   email: "",
   phone: "",
   city: "",
@@ -75,7 +77,9 @@ export default function Register() {
     const next: Partial<Record<keyof FormState, string>> = {};
     if (!form.fullName.trim()) next.fullName = "Enter your full name";
     if (!form.companyName.trim()) next.companyName = "Enter your company name";
-    if (!form.businessType) next.businessType = "Select a business type";
+    if (!form.businessType) next.businessType = "Select the nature of your business";
+    if (form.businessType === OTHER_BUSINESS_TYPE && !form.businessTypeOther.trim())
+      next.businessTypeOther = "Please specify your business type";
     if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email";
     if (form.phone.trim().length < 7) next.phone = "Enter a valid phone number";
     if (!form.city.trim()) next.city = "Enter your city";
@@ -225,12 +229,16 @@ export default function Register() {
 
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-text-primary">
-                  Business Type
+                  Nature of Business
                 </label>
                 <select
                   className="w-full rounded-lg border border-border bg-app-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
                   value={form.businessType}
-                  onChange={(e) => update("businessType", e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    update("businessType", value);
+                    if (value !== OTHER_BUSINESS_TYPE) update("businessTypeOther", "");
+                  }}
                 >
                   <option value="">Select what best describes you</option>
                   {businessTypes.map((type) => (
@@ -241,6 +249,21 @@ export default function Register() {
                 </select>
                 {errors.businessType && (
                   <p className="mt-1 text-xs text-red-600">{errors.businessType}</p>
+                )}
+
+                {form.businessType === OTHER_BUSINESS_TYPE && (
+                  <div className="mt-3">
+                    <input
+                      className="w-full rounded-lg border border-border bg-app-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      placeholder="Please specify your business type"
+                      value={form.businessTypeOther}
+                      onChange={(e) => update("businessTypeOther", e.target.value)}
+                      autoFocus
+                    />
+                    {errors.businessTypeOther && (
+                      <p className="mt-1 text-xs text-red-600">{errors.businessTypeOther}</p>
+                    )}
+                  </div>
                 )}
               </div>
 
