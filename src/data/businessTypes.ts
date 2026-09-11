@@ -1,8 +1,7 @@
 export const businessTypes = [
   "Distributor",
-  "Ecommerce Vendor",
+  "Ecommerce Business",
   "Importer/Exporter",
-  "Logistics Service Provider",
   "Manufacturer",
   "Retailer",
   "Service Provider",
@@ -15,3 +14,4 @@ export const businessTypes = [
 ];
 
 export const OTHER_BUSINESS_TYPE = "Others";
+export const SHIPPING_LOGISTICS_TYPE = "Shipping & Logistics";

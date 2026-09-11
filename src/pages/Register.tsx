@@ -17,7 +17,13 @@ import {
   TrendingUp,
   User,
 } from "lucide-react";
-import { businessTypes, OTHER_BUSINESS_TYPE } from "../data/businessTypes";
+import { businessTypes, OTHER_BUSINESS_TYPE, SHIPPING_LOGISTICS_TYPE } from "../data/businessTypes";
+import {
+  shippingLogisticsCategories,
+  OTHER_SHIPPING_CATEGORY,
+} from "../data/shippingLogisticsCategories";
+import { productCategories, OTHER_PRODUCT_CATEGORY } from "../data/productCategories";
+import { legalStatusOptions, OTHER_LEGAL_STATUS } from "../data/legalStatus";
 
 const perks = [
   { icon: Globe2, text: "List your services in front of shippers worldwide" },
@@ -37,6 +43,12 @@ interface FormState {
   companyName: string;
   businessType: string;
   businessTypeOther: string;
+  shippingCategories: string[];
+  shippingCategoryOther: string;
+  productCategories: string[];
+  productCategoryOther: string;
+  legalStatus: string;
+  legalStatusOther: string;
   email: string;
   phone: string;
   city: string;
@@ -50,6 +62,12 @@ const initialForm: FormState = {
   companyName: "",
   businessType: "",
   businessTypeOther: "",
+  shippingCategories: [],
+  shippingCategoryOther: "",
+  productCategories: [],
+  productCategoryOther: "",
+  legalStatus: "",
+  legalStatusOther: "",
   email: "",
   phone: "",
   city: "",
@@ -73,6 +91,26 @@ export default function Register() {
     setErrors((e) => ({ ...e, [key]: undefined }));
   }
 
+  function toggleShippingCategory(category: string) {
+    setForm((f) => ({
+      ...f,
+      shippingCategories: f.shippingCategories.includes(category)
+        ? f.shippingCategories.filter((c) => c !== category)
+        : [...f.shippingCategories, category],
+    }));
+    setErrors((e) => ({ ...e, shippingCategoryOther: undefined }));
+  }
+
+  function toggleProductCategory(category: string) {
+    setForm((f) => ({
+      ...f,
+      productCategories: f.productCategories.includes(category)
+        ? f.productCategories.filter((c) => c !== category)
+        : [...f.productCategories, category],
+    }));
+    setErrors((e) => ({ ...e, productCategoryOther: undefined }));
+  }
+
   function validate(): boolean {
     const next: Partial<Record<keyof FormState, string>> = {};
     if (!form.fullName.trim()) next.fullName = "Enter your full name";
@@ -80,6 +118,22 @@ export default function Register() {
     if (!form.businessType) next.businessType = "Select the nature of your business";
     if (form.businessType === OTHER_BUSINESS_TYPE && !form.businessTypeOther.trim())
       next.businessTypeOther = "Please specify your business type";
+    if (
+      form.businessType === SHIPPING_LOGISTICS_TYPE &&
+      form.shippingCategories.includes(OTHER_SHIPPING_CATEGORY) &&
+      !form.shippingCategoryOther.trim()
+    )
+      next.shippingCategoryOther = "Please specify your category";
+    if (
+      form.businessType &&
+      form.businessType !== SHIPPING_LOGISTICS_TYPE &&
+      form.productCategories.includes(OTHER_PRODUCT_CATEGORY) &&
+      !form.productCategoryOther.trim()
+    )
+      next.productCategoryOther = "Please specify your product category";
+    if (!form.legalStatus) next.legalStatus = "Select the legal status of your firm";
+    if (form.legalStatus === OTHER_LEGAL_STATUS && !form.legalStatusOther.trim())
+      next.legalStatusOther = "Please specify your legal status";
     if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email";
     if (form.phone.trim().length < 7) next.phone = "Enter a valid phone number";
     if (!form.city.trim()) next.city = "Enter your city";
@@ -238,6 +292,13 @@ export default function Register() {
                     const value = e.target.value;
                     update("businessType", value);
                     if (value !== OTHER_BUSINESS_TYPE) update("businessTypeOther", "");
+                    if (value !== SHIPPING_LOGISTICS_TYPE) {
+                      update("shippingCategories", []);
+                      update("shippingCategoryOther", "");
+                    } else {
+                      update("productCategories", []);
+                      update("productCategoryOther", "");
+                    }
                   }}
                 >
                   <option value="">Select what best describes you</option>
@@ -258,10 +319,156 @@ export default function Register() {
                       placeholder="Please specify your business type"
                       value={form.businessTypeOther}
                       onChange={(e) => update("businessTypeOther", e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
                       autoFocus
                     />
                     {errors.businessTypeOther && (
                       <p className="mt-1 text-xs text-red-600">{errors.businessTypeOther}</p>
+                    )}
+                  </div>
+                )}
+
+                {form.businessType === SHIPPING_LOGISTICS_TYPE && (
+                  <div className="mt-3">
+                    <p className="mb-1.5 text-xs font-semibold text-text-primary">
+                      Select your specific category
+                      {form.shippingCategories.length > 0 && (
+                        <span className="font-normal text-text-secondary">
+                          {" "}
+                          ({form.shippingCategories.length} selected)
+                        </span>
+                      )}
+                    </p>
+                    <div className="grid max-h-56 grid-cols-1 gap-x-4 gap-y-1.5 overflow-y-auto rounded-lg border border-border bg-app-bg p-3 sm:grid-cols-2">
+                      {shippingLogisticsCategories.map((category) => (
+                        <label
+                          key={category}
+                          className="flex cursor-pointer items-center gap-2 text-xs text-text-primary"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={form.shippingCategories.includes(category)}
+                            onChange={() => toggleShippingCategory(category)}
+                            className="h-3.5 w-3.5 shrink-0 rounded border-border text-primary focus:ring-primary/30"
+                          />
+                          {category}
+                        </label>
+                      ))}
+                    </div>
+
+                    {form.shippingCategories.includes(OTHER_SHIPPING_CATEGORY) && (
+                      <div className="mt-2">
+                        <input
+                          className="w-full rounded-lg border border-border bg-app-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                          placeholder="Please specify your category"
+                          value={form.shippingCategoryOther}
+                          onChange={(e) => update("shippingCategoryOther", e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") e.preventDefault();
+                          }}
+                          autoFocus
+                        />
+                        {errors.shippingCategoryOther && (
+                          <p className="mt-1 text-xs text-red-600">
+                            {errors.shippingCategoryOther}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {form.businessType && form.businessType !== SHIPPING_LOGISTICS_TYPE && (
+                  <div className="mt-3">
+                    <p className="mb-1.5 text-xs font-semibold text-text-primary">
+                      Product Dealing With
+                      {form.productCategories.length > 0 && (
+                        <span className="font-normal text-text-secondary">
+                          {" "}
+                          ({form.productCategories.length} selected)
+                        </span>
+                      )}
+                    </p>
+                    <div className="grid max-h-56 grid-cols-1 gap-x-4 gap-y-1.5 overflow-y-auto rounded-lg border border-border bg-app-bg p-3 sm:grid-cols-2">
+                      {productCategories.map((category) => (
+                        <label
+                          key={category}
+                          className="flex cursor-pointer items-center gap-2 text-xs text-text-primary"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={form.productCategories.includes(category)}
+                            onChange={() => toggleProductCategory(category)}
+                            className="h-3.5 w-3.5 shrink-0 rounded border-border text-primary focus:ring-primary/30"
+                          />
+                          {category}
+                        </label>
+                      ))}
+                    </div>
+
+                    {form.productCategories.includes(OTHER_PRODUCT_CATEGORY) && (
+                      <div className="mt-2">
+                        <input
+                          className="w-full rounded-lg border border-border bg-app-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                          placeholder="Please specify your product category"
+                          value={form.productCategoryOther}
+                          onChange={(e) => update("productCategoryOther", e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") e.preventDefault();
+                          }}
+                          autoFocus
+                        />
+                        {errors.productCategoryOther && (
+                          <p className="mt-1 text-xs text-red-600">
+                            {errors.productCategoryOther}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-text-primary">
+                  Legal Status of Firm
+                </label>
+                <select
+                  className="w-full rounded-lg border border-border bg-app-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                  value={form.legalStatus}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    update("legalStatus", value);
+                    if (value !== OTHER_LEGAL_STATUS) update("legalStatusOther", "");
+                  }}
+                >
+                  <option value="">Select legal status</option>
+                  {legalStatusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+                {errors.legalStatus && (
+                  <p className="mt-1 text-xs text-red-600">{errors.legalStatus}</p>
+                )}
+
+                {form.legalStatus === OTHER_LEGAL_STATUS && (
+                  <div className="mt-3">
+                    <input
+                      className="w-full rounded-lg border border-border bg-app-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                      placeholder="Please specify the legal status"
+                      value={form.legalStatusOther}
+                      onChange={(e) => update("legalStatusOther", e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
+                      autoFocus
+                    />
+                    {errors.legalStatusOther && (
+                      <p className="mt-1 text-xs text-red-600">{errors.legalStatusOther}</p>
                     )}
                   </div>
                 )}
