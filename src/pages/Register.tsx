@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -7,11 +7,15 @@ import {
   Eye,
   EyeOff,
   Globe2,
+  Hash,
+  Home,
+  IdCard,
   Loader2,
   Lock,
   Mail,
   MapPin,
   Phone,
+  ReceiptText,
   Send,
   ShieldCheck,
   TrendingUp,
@@ -24,6 +28,7 @@ import {
 } from "../data/shippingLogisticsCategories";
 import { productCategories, OTHER_PRODUCT_CATEGORY } from "../data/productCategories";
 import { legalStatusOptions, OTHER_LEGAL_STATUS } from "../data/legalStatus";
+import { countryOptions, getStatesForCountry, OTHER_COUNTRY, OTHER_STATE } from "../data/locations";
 
 const perks = [
   { icon: Globe2, text: "List your services in front of shippers worldwide" },
@@ -49,9 +54,17 @@ interface FormState {
   productCategoryOther: string;
   legalStatus: string;
   legalStatusOther: string;
+  gstNo: string;
+  panNo: string;
   email: string;
   phone: string;
   city: string;
+  country: string;
+  countryOther: string;
+  state: string;
+  stateOther: string;
+  pincode: string;
+  address: string;
   password: string;
   confirmPassword: string;
   agree: boolean;
@@ -68,9 +81,17 @@ const initialForm: FormState = {
   productCategoryOther: "",
   legalStatus: "",
   legalStatusOther: "",
+  gstNo: "",
+  panNo: "",
   email: "",
   phone: "",
   city: "",
+  country: "",
+  countryOther: "",
+  state: "",
+  stateOther: "",
+  pincode: "",
+  address: "",
   password: "",
   confirmPassword: "",
   agree: false,
@@ -89,6 +110,28 @@ export default function Register() {
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((e) => ({ ...e, [key]: undefined }));
+  }
+
+  const stateOptions = useMemo(() => getStatesForCountry(form.country), [form.country]);
+
+  function handleCountryChange(value: string) {
+    setForm((f) => ({
+      ...f,
+      country: value,
+      countryOther: value === OTHER_COUNTRY ? f.countryOther : "",
+      state: "",
+      stateOther: "",
+    }));
+    setErrors((e) => ({ ...e, country: undefined, countryOther: undefined, state: undefined, stateOther: undefined }));
+  }
+
+  function handleStateChange(value: string) {
+    setForm((f) => ({
+      ...f,
+      state: value,
+      stateOther: value === OTHER_STATE ? f.stateOther : "",
+    }));
+    setErrors((e) => ({ ...e, state: undefined, stateOther: undefined }));
   }
 
   function toggleShippingCategory(category: string) {
@@ -134,9 +177,21 @@ export default function Register() {
     if (!form.legalStatus) next.legalStatus = "Select the legal status of your firm";
     if (form.legalStatus === OTHER_LEGAL_STATUS && !form.legalStatusOther.trim())
       next.legalStatusOther = "Please specify your legal status";
+    if (form.gstNo.trim() && !/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(form.gstNo.trim()))
+      next.gstNo = "Enter a valid 15-character GSTIN";
+    if (form.panNo.trim() && !/^[A-Z]{5}\d{4}[A-Z]$/.test(form.panNo.trim()))
+      next.panNo = "Enter a valid 10-character PAN";
     if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email";
     if (form.phone.trim().length < 7) next.phone = "Enter a valid phone number";
     if (!form.city.trim()) next.city = "Enter your city";
+    if (!form.country) next.country = "Select your country";
+    if (form.country === OTHER_COUNTRY && !form.countryOther.trim())
+      next.countryOther = "Please specify your country";
+    if (!form.state) next.state = "Select your state";
+    if (form.state === OTHER_STATE && !form.stateOther.trim())
+      next.stateOther = "Please specify your state";
+    if (!form.pincode.trim()) next.pincode = "Enter your pincode";
+    if (!form.address.trim()) next.address = "Enter your full address";
     if (form.password.length < 6) next.password = "At least 6 characters";
     if (form.confirmPassword !== form.password) next.confirmPassword = "Passwords don't match";
     if (!form.agree) next.agree = "Required to continue";
@@ -474,6 +529,37 @@ export default function Register() {
                 )}
               </div>
 
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field
+                  label="Company GST No (Optional)"
+                  error={errors.gstNo}
+                  icon={ReceiptText}
+                  input={
+                    <input
+                      className={inputClass}
+                      placeholder="22AAAAA0000A1Z5"
+                      maxLength={15}
+                      value={form.gstNo}
+                      onChange={(e) => update("gstNo", e.target.value.toUpperCase())}
+                    />
+                  }
+                />
+                <Field
+                  label="Company PAN No (Optional)"
+                  error={errors.panNo}
+                  icon={IdCard}
+                  input={
+                    <input
+                      className={inputClass}
+                      placeholder="AAAAA0000A"
+                      maxLength={10}
+                      value={form.panNo}
+                      onChange={(e) => update("panNo", e.target.value.toUpperCase())}
+                    />
+                  }
+                />
+              </div>
+
               <Field
                 label="Email"
                 error={errors.email}
@@ -517,6 +603,125 @@ export default function Register() {
                     />
                   }
                 />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-text-primary">
+                    Country
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-border bg-app-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    value={form.country}
+                    onChange={(e) => handleCountryChange(e.target.value)}
+                  >
+                    <option value="">Select country</option>
+                    {countryOptions.map((country) => (
+                      <option key={country} value={country}>
+                        {country}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.country && (
+                    <p className="mt-1 text-xs text-red-600">{errors.country}</p>
+                  )}
+
+                  {form.country === OTHER_COUNTRY && (
+                    <div className="mt-3">
+                      <input
+                        className="w-full rounded-lg border border-border bg-app-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        placeholder="Please specify your country"
+                        value={form.countryOther}
+                        onChange={(e) => update("countryOther", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.preventDefault();
+                        }}
+                        autoFocus
+                      />
+                      {errors.countryOther && (
+                        <p className="mt-1 text-xs text-red-600">{errors.countryOther}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-text-primary">
+                    State
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-border bg-app-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
+                    value={form.state}
+                    onChange={(e) => handleStateChange(e.target.value)}
+                    disabled={!form.country}
+                  >
+                    <option value="">
+                      {form.country ? "Select state" : "Select country first"}
+                    </option>
+                    {stateOptions.map((state) => (
+                      <option key={state} value={state}>
+                        {state}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.state && (
+                    <p className="mt-1 text-xs text-red-600">{errors.state}</p>
+                  )}
+
+                  {form.state === OTHER_STATE && (
+                    <div className="mt-3">
+                      <input
+                        className="w-full rounded-lg border border-border bg-app-bg px-3 py-2.5 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        placeholder="Please specify your state"
+                        value={form.stateOther}
+                        onChange={(e) => update("stateOther", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.preventDefault();
+                        }}
+                        autoFocus
+                      />
+                      {errors.stateOther && (
+                        <p className="mt-1 text-xs text-red-600">{errors.stateOther}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <Field
+                label="Pincode / ZIP Code"
+                error={errors.pincode}
+                icon={Hash}
+                input={
+                  <input
+                    className={inputClass}
+                    placeholder="400001"
+                    value={form.pincode}
+                    onChange={(e) => update("pincode", e.target.value)}
+                  />
+                }
+              />
+
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-text-primary">
+                  Full Address
+                </label>
+                <div className="relative">
+                  <Home
+                    size={15}
+                    className="pointer-events-none absolute left-3 top-3 text-text-secondary"
+                  />
+                  <textarea
+                    className="w-full rounded-lg border border-border bg-app-bg py-2.5 pl-9 pr-3 text-sm text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
+                    rows={3}
+                    placeholder="Building, street, area"
+                    value={form.address}
+                    onChange={(e) => update("address", e.target.value)}
+                  />
+                </div>
+                {errors.address && (
+                  <p className="mt-1 text-xs text-red-600">{errors.address}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
