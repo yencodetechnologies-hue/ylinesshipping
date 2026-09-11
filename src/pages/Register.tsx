@@ -15,6 +15,7 @@ import {
   Mail,
   MapPin,
   Phone,
+  PhoneCall,
   ReceiptText,
   Send,
   ShieldCheck,
@@ -58,6 +59,7 @@ interface FormState {
   panNo: string;
   email: string;
   phone: string;
+  landline: string;
   city: string;
   country: string;
   countryOther: string;
@@ -85,6 +87,7 @@ const initialForm: FormState = {
   panNo: "",
   email: "",
   phone: "",
+  landline: "",
   city: "",
   country: "",
   countryOther: "",
@@ -182,7 +185,7 @@ export default function Register() {
     if (form.panNo.trim() && !/^[A-Z]{5}\d{4}[A-Z]$/.test(form.panNo.trim()))
       next.panNo = "Enter a valid 10-character PAN";
     if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = "Enter a valid email";
-    if (form.phone.trim().length < 7) next.phone = "Enter a valid phone number";
+    if (form.phone.trim().length < 7) next.phone = "Enter a valid mobile number";
     if (!form.city.trim()) next.city = "Enter your city";
     if (!form.country) next.country = "Select your country";
     if (form.country === OTHER_COUNTRY && !form.countryOther.trim())
@@ -577,7 +580,7 @@ export default function Register() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field
-                  label="Phone Number"
+                  label="Mobile Number"
                   error={errors.phone}
                   icon={Phone}
                   input={
@@ -591,6 +594,23 @@ export default function Register() {
                   }
                 />
                 <Field
+                  label="Landline Number (Optional)"
+                  error={errors.landline}
+                  icon={PhoneCall}
+                  input={
+                    <input
+                      type="tel"
+                      className={inputClass}
+                      placeholder="+1 22 6000 0000"
+                      value={form.landline}
+                      onChange={(e) => update("landline", e.target.value)}
+                    />
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field
                   label="City"
                   error={errors.city}
                   icon={MapPin}
@@ -600,6 +620,19 @@ export default function Register() {
                       placeholder="Mumbai"
                       value={form.city}
                       onChange={(e) => update("city", e.target.value)}
+                    />
+                  }
+                />
+                <Field
+                  label="Pincode / ZIP Code"
+                  error={errors.pincode}
+                  icon={Hash}
+                  input={
+                    <input
+                      className={inputClass}
+                      placeholder="400001"
+                      value={form.pincode}
+                      onChange={(e) => update("pincode", e.target.value)}
                     />
                   }
                 />
@@ -687,20 +720,6 @@ export default function Register() {
                   )}
                 </div>
               </div>
-
-              <Field
-                label="Pincode / ZIP Code"
-                error={errors.pincode}
-                icon={Hash}
-                input={
-                  <input
-                    className={inputClass}
-                    placeholder="400001"
-                    value={form.pincode}
-                    onChange={(e) => update("pincode", e.target.value)}
-                  />
-                }
-              />
 
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-text-primary">
