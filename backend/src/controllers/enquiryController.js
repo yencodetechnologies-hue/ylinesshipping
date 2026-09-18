@@ -25,7 +25,7 @@ const REQUIRED_FIELDS = [
   "noOfPackages",
 ];
 
-// POST /api/enquiries  (auth optional; multipart/form-data with optional "attachments" files)
+// POST /api/enquiries  (auth required; multipart/form-data with optional "attachments" files)
 export const createEnquiry = asyncHandler(async (req, res) => {
   const body = req.body;
   const missing = firstMissing(body, REQUIRED_FIELDS);
@@ -43,7 +43,7 @@ export const createEnquiry = asyncHandler(async (req, res) => {
   const files = req.files || [];
 
   const enquiry = await Enquiry.create({
-    postedBy: req.user ? req.user._id : undefined,
+    postedBy: req.user._id,
     enquiryType: body.enquiryType,
     shipment: body.shipment,
     shipmentType: body.shipmentType,

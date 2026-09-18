@@ -1,12 +1,14 @@
 import { Router } from "express";
-import { protect, optionalAuth } from "../middleware/auth.js";
+import { protect } from "../middleware/auth.js";
 import { upload } from "../middleware/upload.js";
 import { createEnquiry, listEnquiries, getEnquiry } from "../controllers/enquiryController.js";
 
 const router = Router();
 
-router.post("/", optionalAuth, upload.array("attachments", 10), createEnquiry);
-router.get("/", protect, listEnquiries);
-router.get("/:id", protect, getEnquiry);
+router.use(protect);
+
+router.post("/", upload.array("attachments", 10), createEnquiry);
+router.get("/", listEnquiries);
+router.get("/:id", getEnquiry);
 
 export default router;

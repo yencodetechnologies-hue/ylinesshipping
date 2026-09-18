@@ -19,32 +19,42 @@ npm run dev            # http://localhost:5000
   - `company_admin` is created alongside the Company on company registration; can log in immediately, even while the company is pending.
   - `employee` registers with a company `code`, starts `status: "pending"`, and cannot log in until the matching `company_admin` approves them.
   - `individual` is active immediately.
-- **Enquiry** — one document per submission from the Post Enquiry form. Creating one does not require login (`postedBy` is set if a token is sent), but listing/viewing requires login.
+- **Enquiry** — one document per submission from the Post Enquiry form. Every enquiry endpoint requires a Bearer token; `postedBy` is always the logged-in user.
+
+## Auth
+
+Every route except `POST /register/*`, `POST /login` and `GET /health` requires a Bearer token:
+
+```
+Authorization: Bearer <token from /login or /register/*>
+```
+
+`protect` (in `src/middleware/auth.js`) rejects with `401` if the header is missing, malformed, or the token is invalid/expired. `requireRole(...roles)` layers on top of it for role-gated routers (`/api/store`, `/api/admin`).
 
 ## Endpoints
 
 Auth (`/api/auth`):
-- `POST /register/company` (JSON)
-- `POST /register/employee` (multipart: `idProofFront`, `idProofBack`)
-- `POST /register/individual` (multipart: `idProofFront`, `idProofBack`)
-- `POST /login`
-- `GET /me` (auth required)
+- `POST /register/company` (JSON) — public, returns a token
+- `POST /register/employee` (multipart: `idProofFront`, `idProofBack`) — public, returns a token
+- `POST /register/individual` (multipart: `idProofFront`, `idProofBack`) — public, returns a token
+- `POST /login` — public, returns a token
+- `GET /me` — Bearer token required
 
-Store admin, i.e. a `company_admin` managing their own company's employees (`/api/store`, auth required, role `company_admin`):
+Store admin, i.e. a `company_admin` managing their own company's employees (`/api/store`, Bearer token required, role `company_admin`):
 - `GET /employees?status=pending`
 - `PATCH /employees/:id/approve`
 - `PATCH /employees/:id/reject` (body: `{ "reason": "..." }`)
 
-Platform admin (`/api/admin`, auth required, role `platform_admin`):
+Platform admin (`/api/admin`, Bearer token required, role `platform_admin`):
 - `GET /companies?status=pending`
 - `PATCH /companies/:id/approve`
 - `PATCH /companies/:id/reject` (body: `{ "reason": "..." }`)
 - `GET /users?role=&status=`
 
-Enquiries (`/api/enquiries`):
-- `POST /` (multipart, auth optional — attach a Bearer token to associate it with an account; field `attachments` for files, `packages` as a JSON string of the weight/volume rows)
-- `GET /` (auth required — stores/admins see all; individuals see their own; `?mine=true` forces "my enquiries" for any role)
-- `GET /:id` (auth required)
+Enquiries (`/api/enquiries`, Bearer token required for every route):
+- `POST /` (multipart; field `attachments` for files, `packages` as a JSON string of the weight/volume rows)
+- `GET /` — stores/admins see all; individuals see their own; `?mine=true` forces "my enquiries" for any role
+- `GET /:id`
 
 All list endpoints return uploaded file names only; fetch the file itself from `/uploads/<filename>`.
 

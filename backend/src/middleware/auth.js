@@ -29,21 +29,6 @@ export const protect = asyncHandler(async (req, res, next) => {
   next();
 });
 
-/** Attaches req.user when a valid token is present, but never blocks the request. */
-export const optionalAuth = asyncHandler(async (req, res, next) => {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  if (!token) return next();
-
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(payload.id);
-  } catch {
-    // ignore invalid/expired token for optional auth
-  }
-  next();
-});
-
 export function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
