@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Anchor,
@@ -451,7 +451,7 @@ export default function PostEnquiry() {
                   input={
                     <input
                       className={inputClass}
-                      placeholder="City / factory location"
+                      placeholder="City(pickup location)"
                       value={form.placeOfOrigin}
                       onChange={(e) => update("placeOfOrigin", e.target.value)}
                     />
@@ -515,7 +515,7 @@ export default function PostEnquiry() {
                   input={
                     <input
                       className={inputClass}
-                      placeholder="City / warehouse location"
+                      placeholder="City Delivery location"
                       value={form.placeOfDelivery}
                       onChange={(e) => update("placeOfDelivery", e.target.value)}
                     />
@@ -703,7 +703,19 @@ export default function PostEnquiry() {
             </div>
           </Section>
 
-          <Section title="Weight &amp; Volume" icon={Box}>
+          <Section
+            title="Weight &amp; Volume"
+            icon={Box}
+            action={
+              <button
+                type="button"
+                onClick={addRow}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:border-primary hover:bg-primary/5"
+              >
+                <Plus size={14} /> Add Row
+              </button>
+            }
+          >
             <div className="overflow-x-auto rounded-lg border border-border">
               <table className="w-full min-w-[640px] border-collapse text-xs">
                 <thead>
@@ -801,13 +813,6 @@ export default function PostEnquiry() {
                 </tfoot>
               </table>
             </div>
-            <button
-              type="button"
-              onClick={addRow}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:border-primary hover:bg-primary/5"
-            >
-              <Plus size={14} /> Add Row
-            </button>
           </Section>
 
           <Section title="Handling Instruction (if any)" icon={MessageSquareText}>
@@ -889,18 +894,22 @@ export default function PostEnquiry() {
 interface SectionProps {
   title: string;
   icon: typeof Package;
+  action?: ReactNode;
   children: React.ReactNode;
 }
 
-function Section({ title, icon: Icon, children }: SectionProps) {
+function Section({ title, icon: Icon, action, children }: SectionProps) {
   return (
     <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
-      <h2 className="mb-4 flex items-center gap-2 font-display text-sm font-bold text-text-primary sm:text-base">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-          <Icon size={14} />
-        </span>
-        {title}
-      </h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 font-display text-sm font-bold text-text-primary sm:text-base">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Icon size={14} />
+          </span>
+          {title}
+        </h2>
+        {action}
+      </div>
       {children}
     </div>
   );
