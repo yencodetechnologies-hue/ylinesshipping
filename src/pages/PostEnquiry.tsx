@@ -123,6 +123,30 @@ const incoTerms: IncoTerm[] = [
 ];
 const OTHER_INCO_TERM: IncoTerm = "OTHERS";
 
+type ShippingBillType =
+  | "SHIPPING BILL"
+  | "BOND SHIPPING BILL"
+  | "DEEC SHIPPING BILL"
+  | "DEPB SHIPPING BILL"
+  | "DRAW BACK SHIPPING BILL"
+  | "DUTIABLE SHIPPING BILL"
+  | "EPCG SHIPPING BILL"
+  | "FREE SHIPPING BILL"
+  | "OTHERS";
+
+const shippingBillTypes: ShippingBillType[] = [
+  "SHIPPING BILL",
+  "BOND SHIPPING BILL",
+  "DEEC SHIPPING BILL",
+  "DEPB SHIPPING BILL",
+  "DRAW BACK SHIPPING BILL",
+  "DUTIABLE SHIPPING BILL",
+  "EPCG SHIPPING BILL",
+  "FREE SHIPPING BILL",
+  "OTHERS",
+];
+const OTHER_SHIPPING_BILL_TYPE: ShippingBillType = "OTHERS";
+
 interface PackageRow {
   id: string;
   netWeight: string;
@@ -130,6 +154,7 @@ interface PackageRow {
   length: string;
   breadth: string;
   height: string;
+  cbm: string;
 }
 
 function newRow(): PackageRow {
@@ -140,6 +165,7 @@ function newRow(): PackageRow {
     length: "",
     breadth: "",
     height: "",
+    cbm: "",
   };
 }
 
@@ -172,7 +198,8 @@ interface FormState {
   paymentType: PaymentType | "";
   paymentTypeOther: string;
   transitTime: string;
-  shippingBillType: string;
+  shippingBillType: ShippingBillType | "";
+  shippingBillTypeOther: string;
 
   commodity: string;
   hsCode: string;
@@ -214,6 +241,7 @@ const initialForm: FormState = {
   paymentTypeOther: "",
   transitTime: "",
   shippingBillType: "",
+  shippingBillTypeOther: "",
 
   commodity: "",
   hsCode: "",
@@ -232,15 +260,74 @@ const plainInputClass =
 const cellInputClass =
   "w-full rounded-md border border-border bg-white px-2 py-1.5 text-xs text-text-primary outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15";
 
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
+  ".pdf",
+  ".txt",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".gif",
+  ".webp",
+  ".bmp",
+]);
+
+const ALLOWED_ATTACHMENT_MIMES = new Set([
+  "application/pdf",
+  "text/plain",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/bmp",
+]);
+
+const ATTACHMENT_ACCEPT =
+  ".pdf,.txt,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.bmp,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png,image/gif,image/webp,image/bmp";
+
+function isAllowedAttachment(file: File): boolean {
+  const ext = file.name.includes(".")
+    ? `.${file.name.split(".").pop()!.toLowerCase()}`
+    : "";
+  if (ALLOWED_ATTACHMENT_EXTENSIONS.has(ext)) return true;
+  if (file.type.startsWith("image/") && ALLOWED_ATTACHMENT_MIMES.has(file.type)) return true;
+  return ALLOWED_ATTACHMENT_MIMES.has(file.type);
+}
+
 function numeric(value: string): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+function sanitizeDecimal(value: string): string {
+  const cleaned = value.replace(/[^\d.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  if (firstDot === -1) return cleaned;
+  return cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, "");
+}
+
+/** Sea freight: 1 CBM = 1000 kg. */
+function seaVolumetricKg(cbm: number): number {
+  return cbm * 1000;
+}
+
+/** Air freight IATA: (L × B × H cm) / 6000 = CBM × (1,000,000 / 6000) ≈ 166.667 kg. */
+function airVolumetricKg(cbm: number): number {
+  return cbm * (1_000_000 / 6000);
 }
 
 export default function PostEnquiry() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [rows, setRows] = useState<PackageRow[]>([newRow(), newRow(), newRow()]);
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachmentError, setAttachmentError] = useState("");
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -251,7 +338,8 @@ export default function PostEnquiry() {
   }
 
   function updateRow(id: string, key: keyof Omit<PackageRow, "id">, value: string) {
-    setRows((r) => r.map((row) => (row.id === id ? { ...row, [key]: value } : row)));
+    const nextValue = sanitizeDecimal(value);
+    setRows((r) => r.map((row) => (row.id === id ? { ...row, [key]: nextValue } : row)));
   }
 
   function addRow() {
@@ -264,7 +352,19 @@ export default function PostEnquiry() {
 
   function handleAttachmentChange(files: FileList | null) {
     if (!files || files.length === 0) return;
-    setAttachments((a) => [...a, ...Array.from(files)]);
+    const selected = Array.from(files);
+    const allowed = selected.filter(isAllowedAttachment);
+    const rejected = selected.filter((file) => !isAllowedAttachment(file));
+    if (allowed.length > 0) {
+      setAttachments((a) => [...a, ...allowed]);
+    }
+    setAttachmentError(
+      rejected.length > 0
+        ? `Only PDF, Notepad (.txt), Word, Excel, and image files are allowed. Removed: ${rejected
+            .map((file) => file.name)
+            .join(", ")}`
+        : ""
+    );
   }
 
   function removeAttachment(index: number) {
@@ -273,13 +373,25 @@ export default function PostEnquiry() {
 
   const totals = rows.reduce(
     (acc, row) => {
+      const cbm = numeric(row.cbm);
       acc.netWeight += numeric(row.netWeight);
       acc.grossWeight += numeric(row.grossWeight);
-      acc.volume += (numeric(row.length) * numeric(row.breadth) * numeric(row.height)) / 1_000_000;
+      acc.volume += cbm;
+      acc.seaVolumetric += seaVolumetricKg(cbm);
+      acc.airVolumetric += airVolumetricKg(cbm);
       return acc;
     },
-    { netWeight: 0, grossWeight: 0, volume: 0 }
+    { netWeight: 0, grossWeight: 0, volume: 0, seaVolumetric: 0, airVolumetric: 0 }
   );
+
+  const isAirEnquiry = form.enquiryType === "air";
+  const isSeaEnquiry = form.enquiryType === "sea";
+  const selectedVolumetric = isAirEnquiry
+    ? totals.airVolumetric
+    : isSeaEnquiry
+      ? totals.seaVolumetric
+      : 0;
+  const chargeableWeight = Math.max(totals.grossWeight, selectedVolumetric);
 
   function validate(): boolean {
     const next: Partial<Record<keyof FormState, string>> = {};
@@ -314,6 +426,8 @@ export default function PostEnquiry() {
 
     if (form.incoTerm === OTHER_INCO_TERM && !form.incoTermOther.trim())
       next.incoTermOther = "Please specify the inco term";
+    if (form.shippingBillType === OTHER_SHIPPING_BILL_TYPE && !form.shippingBillTypeOther.trim())
+      next.shippingBillTypeOther = "Please specify the shipping bill type";
 
     if (!form.commodity.trim()) next.commodity = "Enter the commodity";
     if (!form.packageType) next.packageType = "Select package type";
@@ -761,18 +875,59 @@ export default function PostEnquiry() {
                   />
                 }
               />
-              <Field
-                label="Type of Shipping Bill"
-                icon={FileText}
-                input={
-                  <input
-                    className={inputClass}
-                    placeholder="e.g. Drawback, DEEC, DEPB"
-                    value={form.shippingBillType}
-                    onChange={(e) => update("shippingBillType", e.target.value)}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-text-primary">
+                  Type of Shipping Bill
+                </label>
+                <div className="relative">
+                  <FileText
+                    size={15}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
                   />
-                }
-              />
+                  <select
+                    className={inputClass}
+                    value={form.shippingBillType}
+                    onChange={(e) => {
+                      const value = e.target.value as ShippingBillType | "";
+                      setForm((f) => ({
+                        ...f,
+                        shippingBillType: value,
+                        shippingBillTypeOther:
+                          value === OTHER_SHIPPING_BILL_TYPE ? f.shippingBillTypeOther : "",
+                      }));
+                      setErrors((err) => ({
+                        ...err,
+                        shippingBillType: undefined,
+                        shippingBillTypeOther: undefined,
+                      }));
+                    }}
+                  >
+                    <option value="">Select shipping bill type</option>
+                    {shippingBillTypes.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {errors.shippingBillType && (
+                  <p className="mt-1 text-xs text-red-600">{errors.shippingBillType}</p>
+                )}
+                {form.shippingBillType === OTHER_SHIPPING_BILL_TYPE && (
+                  <div className="mt-2">
+                    <input
+                      className={plainInputClass}
+                      placeholder="Please specify the shipping bill type"
+                      value={form.shippingBillTypeOther}
+                      onChange={(e) => update("shippingBillTypeOther", e.target.value)}
+                      autoFocus
+                    />
+                    {errors.shippingBillTypeOther && (
+                      <p className="mt-1 text-xs text-red-600">{errors.shippingBillTypeOther}</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </Section>
 
@@ -897,17 +1052,14 @@ export default function PostEnquiry() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, index) => {
-                    const volume =
-                      (numeric(row.length) * numeric(row.breadth) * numeric(row.height)) /
-                      1_000_000;
-                    return (
+                  {rows.map((row, index) => (
                       <tr key={row.id} className="border-b border-border last:border-b-0">
                         <td className="px-2 py-1.5 text-center text-text-secondary">{index + 1}</td>
                         <td className="px-2 py-1.5">
                           <input
                             className={cellInputClass}
                             inputMode="decimal"
+                            pattern="[0-9]*[.]?[0-9]*"
                             value={row.netWeight}
                             onChange={(e) => updateRow(row.id, "netWeight", e.target.value)}
                           />
@@ -916,6 +1068,7 @@ export default function PostEnquiry() {
                           <input
                             className={cellInputClass}
                             inputMode="decimal"
+                            pattern="[0-9]*[.]?[0-9]*"
                             value={row.grossWeight}
                             onChange={(e) => updateRow(row.id, "grossWeight", e.target.value)}
                           />
@@ -924,6 +1077,7 @@ export default function PostEnquiry() {
                           <input
                             className={cellInputClass}
                             inputMode="decimal"
+                            pattern="[0-9]*[.]?[0-9]*"
                             value={row.length}
                             onChange={(e) => updateRow(row.id, "length", e.target.value)}
                           />
@@ -932,6 +1086,7 @@ export default function PostEnquiry() {
                           <input
                             className={cellInputClass}
                             inputMode="decimal"
+                            pattern="[0-9]*[.]?[0-9]*"
                             value={row.breadth}
                             onChange={(e) => updateRow(row.id, "breadth", e.target.value)}
                           />
@@ -940,12 +1095,19 @@ export default function PostEnquiry() {
                           <input
                             className={cellInputClass}
                             inputMode="decimal"
+                            pattern="[0-9]*[.]?[0-9]*"
                             value={row.height}
                             onChange={(e) => updateRow(row.id, "height", e.target.value)}
                           />
                         </td>
-                        <td className="px-2 py-1.5 text-center text-text-secondary">
-                          {volume > 0 ? volume.toFixed(3) : "—"}
+                        <td className="px-2 py-1.5">
+                          <input
+                            className={cellInputClass}
+                            inputMode="decimal"
+                            pattern="[0-9]*[.]?[0-9]*"
+                            value={row.cbm}
+                            onChange={(e) => updateRow(row.id, "cbm", e.target.value)}
+                          />
                         </td>
                         <td className="px-2 py-1.5 text-center">
                           <button
@@ -959,8 +1121,7 @@ export default function PostEnquiry() {
                           </button>
                         </td>
                       </tr>
-                    );
-                  })}
+                  ))}
                 </tbody>
                 <tfoot>
                   <tr className="bg-app-bg font-semibold text-text-primary">
@@ -974,6 +1135,61 @@ export default function PostEnquiry() {
                   </tr>
                 </tfoot>
               </table>
+            </div>
+
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-lg border border-border bg-app-bg px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
+                  Total CBM
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-text-primary">
+                  {totals.volume.toFixed(3)} m³
+                </p>
+                <p className="text-[11px] text-text-secondary">Entered volume per row</p>
+              </div>
+              <div
+                className={`rounded-lg border px-3 py-2 ${
+                  isSeaEnquiry ? "border-primary bg-primary/5" : "border-border bg-app-bg"
+                }`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
+                  Sea volumetric wt
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-text-primary">
+                  {totals.seaVolumetric.toFixed(2)} kg
+                </p>
+                <p className="text-[11px] text-text-secondary">CBM × 1000 (1 CBM = 1000 kg)</p>
+              </div>
+              <div
+                className={`rounded-lg border px-3 py-2 ${
+                  isAirEnquiry ? "border-primary bg-primary/5" : "border-border bg-app-bg"
+                }`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
+                  Air volumetric wt
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-text-primary">
+                  {totals.airVolumetric.toFixed(2)} kg
+                </p>
+                <p className="text-[11px] text-text-secondary">CBM × 166.667 (IATA ÷ 6000)</p>
+              </div>
+              <div className="rounded-lg border border-border bg-app-bg px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
+                  Chargeable weight
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-text-primary">
+                  {isSeaEnquiry || isAirEnquiry
+                    ? `${chargeableWeight.toFixed(2)} kg`
+                    : "—"}
+                </p>
+                <p className="text-[11px] text-text-secondary">
+                  {isAirEnquiry
+                    ? "Max of gross wt and air volumetric wt"
+                    : isSeaEnquiry
+                      ? "Max of gross wt and sea volumetric wt"
+                      : "Select Sea or Air enquiry type"}
+                </p>
+              </div>
             </div>
           </Section>
 
@@ -1003,14 +1219,21 @@ export default function PostEnquiry() {
               <span className="text-xs font-medium text-text-primary">
                 Click to upload packing list, invoice, or photos
               </span>
-              <span className="text-[11px] text-text-secondary">PDF, image or document files</span>
+              <span className="text-[11px] text-text-secondary">
+                PDF, Notepad (.txt), Word, Excel, or images only
+              </span>
               <input
                 type="file"
                 multiple
+                accept={ATTACHMENT_ACCEPT}
                 className="hidden"
-                onChange={(e) => handleAttachmentChange(e.target.files)}
+                onChange={(e) => {
+                  handleAttachmentChange(e.target.files);
+                  e.target.value = "";
+                }}
               />
             </label>
+            {attachmentError && <p className="mt-2 text-xs text-red-600">{attachmentError}</p>}
 
             {attachments.length > 0 && (
               <ul className="mt-3 space-y-1.5">
