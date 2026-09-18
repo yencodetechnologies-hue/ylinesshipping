@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Anchor,
@@ -21,7 +21,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { getCitiesForCountry, OTHER_CITY } from "../data/cities";
+import { getPostalCodeForCity, OTHER_CITY, searchCities } from "../data/cities";
 import { countryOptions, OTHER_COUNTRY } from "../data/locations";
 import { getPortsForCountry, OTHER_PORT } from "../data/ports";
 import { services } from "../data/services";
@@ -71,6 +71,28 @@ const packageTypes: PackageType[] = [
 ];
 const OTHER_PACKAGE_TYPE: PackageType = "OTHERS";
 
+type PaymentType =
+  | "OPEN ACCOUNT"
+  | "TT (TELEGRAPHIC TRANSFER)"
+  | "LC (LETTER OF CREDIT)"
+  | "DOCUMENT AGAINST PAYMENT"
+  | "DOCUMENT AGAINST ACCEPTANCE"
+  | "CONSIGNMENT"
+  | "CASH IN ADVANCE"
+  | "OTHERS";
+
+const paymentTypes: PaymentType[] = [
+  "OPEN ACCOUNT",
+  "TT (TELEGRAPHIC TRANSFER)",
+  "LC (LETTER OF CREDIT)",
+  "DOCUMENT AGAINST PAYMENT",
+  "DOCUMENT AGAINST ACCEPTANCE",
+  "CONSIGNMENT",
+  "CASH IN ADVANCE",
+  "OTHERS",
+];
+const OTHER_PAYMENT_TYPE: PaymentType = "OTHERS";
+
 interface PackageRow {
   id: string;
   netWeight: string;
@@ -116,7 +138,8 @@ interface FormState {
   shipmentDate: string;
   incoTerm: string;
   preferredLine: string;
-  paymentTerm: string;
+  paymentType: PaymentType | "";
+  paymentTypeOther: string;
   transitTime: string;
   shippingBillType: string;
 
@@ -155,7 +178,8 @@ const initialForm: FormState = {
   shipmentDate: "",
   incoTerm: "",
   preferredLine: "",
-  paymentTerm: "",
+  paymentType: "",
+  paymentTypeOther: "",
   transitTime: "",
   shippingBillType: "",
 
@@ -435,8 +459,6 @@ export default function PostEnquiry() {
                       departureCountryOther: v === OTHER_COUNTRY ? f.departureCountryOther : "",
                       portOfLoading: "",
                       portOfLoadingOther: "",
-                      placeOfOrigin: "",
-                      placeOfOriginOther: "",
                     }))
                   }
                   onOtherChange={(v) => update("departureCountryOther", v)}
@@ -460,7 +482,6 @@ export default function PostEnquiry() {
                 />
                 <CityField
                   label="Place of Origin"
-                  country={form.departureCountry}
                   value={form.placeOfOrigin}
                   otherValue={form.placeOfOriginOther}
                   error={errors.placeOfOrigin}
@@ -473,6 +494,7 @@ export default function PostEnquiry() {
                     }))
                   }
                   onOtherChange={(v) => update("placeOfOriginOther", v)}
+                  onCitySelected={(postalCode) => update("departurePostalCode", postalCode)}
                 />
                 <Field
                   label="Postal Code"
@@ -505,8 +527,6 @@ export default function PostEnquiry() {
                       arrivalCountryOther: v === OTHER_COUNTRY ? f.arrivalCountryOther : "",
                       portOfDischarge: "",
                       portOfDischargeOther: "",
-                      placeOfDelivery: "",
-                      placeOfDeliveryOther: "",
                     }))
                   }
                   onOtherChange={(v) => update("arrivalCountryOther", v)}
@@ -530,7 +550,6 @@ export default function PostEnquiry() {
                 />
                 <CityField
                   label="Place of Delivery"
-                  country={form.arrivalCountry}
                   value={form.placeOfDelivery}
                   otherValue={form.placeOfDeliveryOther}
                   error={errors.placeOfDelivery}
@@ -543,6 +562,7 @@ export default function PostEnquiry() {
                     }))
                   }
                   onOtherChange={(v) => update("placeOfDeliveryOther", v)}
+                  onCitySelected={(postalCode) => update("arrivalPostalCode", postalCode)}
                 />
                 <Field
                   label="Postal Code"
@@ -598,18 +618,58 @@ export default function PostEnquiry() {
                   />
                 }
               />
-              <Field
-                label="Payment Term"
-                icon={Wallet}
-                input={
-                  <input
-                    className={inputClass}
-                    placeholder="e.g. Prepaid, Collect"
-                    value={form.paymentTerm}
-                    onChange={(e) => update("paymentTerm", e.target.value)}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-text-primary">
+                  Payment Type
+                </label>
+                <div className="relative">
+                  <Wallet
+                    size={15}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
                   />
-                }
-              />
+                  <select
+                    className={inputClass}
+                    value={form.paymentType}
+                    onChange={(e) => {
+                      const value = e.target.value as PaymentType | "";
+                      setForm((f) => ({
+                        ...f,
+                        paymentType: value,
+                        paymentTypeOther: value === OTHER_PAYMENT_TYPE ? f.paymentTypeOther : "",
+                      }));
+                      setErrors((err) => ({
+                        ...err,
+                        paymentType: undefined,
+                        paymentTypeOther: undefined,
+                      }));
+                    }}
+                  >
+                    <option value="">Select payment type</option>
+                    {paymentTypes.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {errors.paymentType && (
+                  <p className="mt-1 text-xs text-red-600">{errors.paymentType}</p>
+                )}
+                {form.paymentType === OTHER_PAYMENT_TYPE && (
+                  <div className="mt-2">
+                    <input
+                      className={plainInputClass}
+                      placeholder="Please specify the payment type"
+                      value={form.paymentTypeOther}
+                      onChange={(e) => update("paymentTypeOther", e.target.value)}
+                      autoFocus
+                    />
+                    {errors.paymentTypeOther && (
+                      <p className="mt-1 text-xs text-red-600">{errors.paymentTypeOther}</p>
+                    )}
+                  </div>
+                )}
+              </div>
               <Field
                 label="Transit Time"
                 icon={CalendarDays}
@@ -1095,54 +1155,120 @@ function PortField({
 
 interface CityFieldProps {
   label: string;
-  country: string;
   value: string;
   otherValue: string;
   error?: string;
   otherError?: string;
   onChange: (value: string) => void;
   onOtherChange: (value: string) => void;
+  onCitySelected?: (postalCode: string) => void;
 }
 
 /**
- * Place of Origin / Place of Delivery dropdown: lists every city for the
- * selected country, falling back to a free-text field via "Others" when
- * the city isn't listed, or the country isn't picked yet.
+ * Place of Origin / Place of Delivery: a searchable dropdown over every
+ * city in the world (~148k entries). A plain <select> with that many
+ * options would be unusably slow to open, so this is a type-ahead combobox
+ * instead - matches are looked up as the user types and capped at 50, with
+ * "Others" always offered at the bottom for a city that isn't listed.
+ *
+ * Picking a real city (not "Others") also reports its postal code via
+ * `onCitySelected`, so the caller can auto-fill the Postal Code field -
+ * best-effort, since a city can have many postal codes in reality.
  */
 function CityField({
   label,
-  country,
   value,
   otherValue,
   error,
   otherError,
   onChange,
   onOtherChange,
+  onCitySelected,
 }: CityFieldProps) {
-  const cityOptions = country ? getCitiesForCountry(country) : [OTHER_CITY];
+  const [query, setQuery] = useState(value);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery(value);
+      }
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [value]);
+
+  function selectCity(city: string) {
+    onChange(city);
+    setQuery(city);
+    setOpen(false);
+    if (city !== OTHER_CITY) onCitySelected?.(getPostalCodeForCity(city));
+  }
+
+  const matches = open ? searchCities(query) : [];
 
   return (
-    <div>
+    <div ref={containerRef} className="relative">
       <label className="mb-1.5 block text-xs font-semibold text-text-primary">{label}</label>
       <div className="relative">
         <MapPin
           size={15}
           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
         />
-        <select
+        <input
           className={inputClass}
-          value={value}
-          disabled={!country}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value="">{country ? "Select city" : "Select country first"}</option>
-          {cityOptions.map((city) => (
-            <option key={city} value={city}>
-              {city}
-            </option>
-          ))}
-        </select>
+          placeholder="Type to search a city…"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+            if (value) onChange("");
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.preventDefault();
+            if (e.key === "Escape") {
+              setOpen(false);
+              setQuery(value);
+            }
+          }}
+        />
       </div>
+
+      {open && (
+        <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-border bg-white shadow-lg">
+          {matches.map((city) => (
+            <li key={city}>
+              <button
+                type="button"
+                className="block w-full px-3 py-2 text-left text-sm text-text-primary hover:bg-primary/5"
+                onClick={() => selectCity(city)}
+              >
+                {city}
+              </button>
+            </li>
+          ))}
+          {matches.length === 0 && query.trim() && (
+            <li className="px-3 py-2 text-xs text-text-secondary">No matches</li>
+          )}
+          <li>
+            <button
+              type="button"
+              className="block w-full border-t border-border px-3 py-2 text-left text-sm font-semibold text-primary hover:bg-primary/5"
+              onClick={() => selectCity(OTHER_CITY)}
+            >
+              Others (enter manually)
+            </button>
+          </li>
+        </ul>
+      )}
+
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
 
       {value === OTHER_CITY && (
