@@ -299,6 +299,7 @@ export default function PostEnquiry() {
     if (!form.placeOfOrigin) next.placeOfOrigin = "Select place of origin";
     if (form.placeOfOrigin === OTHER_CITY && !form.placeOfOriginOther.trim())
       next.placeOfOriginOther = "Please specify the city";
+    if (!form.departurePostalCode.trim()) next.departurePostalCode = "Enter the pincode";
 
     if (!form.arrivalCountry) next.arrivalCountry = "Select arrival country";
     if (form.arrivalCountry === OTHER_COUNTRY && !form.arrivalCountryOther.trim())
@@ -309,6 +310,7 @@ export default function PostEnquiry() {
     if (!form.placeOfDelivery) next.placeOfDelivery = "Select place of delivery";
     if (form.placeOfDelivery === OTHER_CITY && !form.placeOfDeliveryOther.trim())
       next.placeOfDeliveryOther = "Please specify the city";
+    if (!form.arrivalPostalCode.trim()) next.arrivalPostalCode = "Enter the pincode";
 
     if (form.incoTerm === OTHER_INCO_TERM && !form.incoTermOther.trim())
       next.incoTermOther = "Please specify the inco term";
@@ -533,6 +535,7 @@ export default function PostEnquiry() {
                 />
                 <Field
                   label="Postal Code"
+                  error={errors.departurePostalCode}
                   icon={Hash}
                   input={
                     <input
@@ -540,6 +543,7 @@ export default function PostEnquiry() {
                       placeholder="400707"
                       value={form.departurePostalCode}
                       onChange={(e) => update("departurePostalCode", e.target.value)}
+                      required
                     />
                   }
                 />
@@ -601,6 +605,7 @@ export default function PostEnquiry() {
                 />
                 <Field
                   label="Postal Code"
+                  error={errors.arrivalPostalCode}
                   icon={Hash}
                   input={
                     <input
@@ -608,6 +613,7 @@ export default function PostEnquiry() {
                       placeholder="00000"
                       value={form.arrivalPostalCode}
                       onChange={(e) => update("arrivalPostalCode", e.target.value)}
+                      required
                     />
                   }
                 />
