@@ -9,6 +9,7 @@ const navLinks = [
   { label: "Services", href: "/#services" },
   { label: "Companies", href: "/#companies" },
   { label: "List Your Company", href: "/#list-company" },
+  { label: "Resources", href: "/#resources" },
   { label: "Contact", href: "/#footer" },
 ];
 
@@ -135,6 +136,15 @@ export default function Navbar() {
                 </Link>
               ))}
 
+              <div className="mx-5 border-t border-border" />
+              <Link
+                to="/#resources"
+                onClick={closeDrawer}
+                className="flex items-center justify-between px-5 py-3 text-[15px] text-text-primary hover:bg-black/[0.03]"
+              >
+                Resources
+                <ChevronRight size={14} className="text-secondary" />
+              </Link>
               <div className="mx-5 border-t border-border" />
               <Link
                 to="/register"

@@ -14,7 +14,6 @@ import {
   MessageSquareText,
   Package,
   Paperclip,
-  Plane,
   Plus,
   Route,
   Ship,
@@ -23,18 +22,22 @@ import {
   X,
 } from "lucide-react";
 import { countryOptions, OTHER_COUNTRY } from "../data/locations";
+import { services } from "../data/services";
 
-type EnquiryType = "SEA" | "AIR";
+type EnquiryType = (typeof services)[number]["id"];
 type ShipmentDirection = "IMPORT" | "EXPORT" | "DOMESTIC";
-type ShipmentType = "FCL" | "LCL" | "BULK" | "BREAK BULK" | "PROJECT CARGO";
-
-const enquiryTypes: { value: EnquiryType; label: string; icon: typeof Ship }[] = [
-  { value: "SEA", label: "Sea", icon: Ship },
-  { value: "AIR", label: "Air", icon: Plane },
-];
+type ShipmentType = "FCL" | "LCL" | "BULK" | "BREAK BULK" | "PROJECT CARGO" | "OTHERS";
 
 const shipmentDirections: ShipmentDirection[] = ["IMPORT", "EXPORT", "DOMESTIC"];
-const shipmentTypes: ShipmentType[] = ["FCL", "LCL", "BULK", "BREAK BULK", "PROJECT CARGO"];
+const shipmentTypes: ShipmentType[] = [
+  "FCL",
+  "LCL",
+  "BULK",
+  "BREAK BULK",
+  "PROJECT CARGO",
+  "OTHERS",
+];
+const OTHER_SHIPMENT_TYPE: ShipmentType = "OTHERS";
 
 interface PackageRow {
   id: string;
@@ -60,6 +63,7 @@ interface FormState {
   enquiryType: EnquiryType | "";
   shipment: ShipmentDirection | "";
   shipmentType: ShipmentType | "";
+  shipmentTypeOther: string;
 
   departureCountry: string;
   departureCountryOther: string;
@@ -93,6 +97,7 @@ const initialForm: FormState = {
   enquiryType: "",
   shipment: "",
   shipmentType: "",
+  shipmentTypeOther: "",
 
   departureCountry: "",
   departureCountryOther: "",
@@ -181,9 +186,11 @@ export default function PostEnquiry() {
   function validate(): boolean {
     const next: Partial<Record<keyof FormState, string>> = {};
 
-    if (!form.enquiryType) next.enquiryType = "Select sea or air";
+    if (!form.enquiryType) next.enquiryType = "Select enquiry type";
     if (!form.shipment) next.shipment = "Select shipment direction";
     if (!form.shipmentType) next.shipmentType = "Select shipment type";
+    if (form.shipmentType === OTHER_SHIPMENT_TYPE && !form.shipmentTypeOther.trim())
+      next.shipmentTypeOther = "Please specify the shipment type";
 
     if (!form.departureCountry) next.departureCountry = "Select departure country";
     if (form.departureCountry === OTHER_COUNTRY && !form.departureCountryOther.trim())
@@ -223,7 +230,8 @@ export default function PostEnquiry() {
             Enquiry posted successfully
           </h1>
           <p className="mt-2 text-sm text-text-secondary">
-            Your {form.enquiryType || "shipment"} {form.shipment.toLowerCase()} enquiry has been sent
+            Your {services.find((s) => s.id === form.enquiryType)?.label || "shipment"}{" "}
+            {form.shipment.toLowerCase()} enquiry has been sent
             to matching freight forwarders and carriers. They'll reach out with quotes shortly.
           </p>
           <Link
@@ -257,26 +265,18 @@ export default function PostEnquiry() {
                 <label className="mb-1.5 block text-xs font-semibold text-text-primary">
                   Enquiry
                 </label>
-                <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-app-bg p-1">
-                  {enquiryTypes.map(({ value, label, icon: Icon }) => {
-                    const active = form.enquiryType === value;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => update("enquiryType", value)}
-                        className={`flex items-center justify-center gap-1.5 rounded-md py-2 text-xs font-semibold transition-colors ${
-                          active
-                            ? "bg-primary text-white shadow-sm"
-                            : "text-text-secondary hover:text-text-primary"
-                        }`}
-                      >
-                        <Icon size={14} />
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <select
+                  className={plainInputClass}
+                  value={form.enquiryType}
+                  onChange={(e) => update("enquiryType", e.target.value as EnquiryType)}
+                >
+                  <option value="">Select enquiry</option>
+                  {services.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.label}
+                    </option>
+                  ))}
+                </select>
                 {errors.enquiryType && (
                   <p className="mt-1 text-xs text-red-600">{errors.enquiryType}</p>
                 )}
@@ -308,7 +308,19 @@ export default function PostEnquiry() {
                 <select
                   className={plainInputClass}
                   value={form.shipmentType}
-                  onChange={(e) => update("shipmentType", e.target.value as ShipmentType)}
+                  onChange={(e) => {
+                    const value = e.target.value as ShipmentType | "";
+                    setForm((f) => ({
+                      ...f,
+                      shipmentType: value,
+                      shipmentTypeOther: value === OTHER_SHIPMENT_TYPE ? f.shipmentTypeOther : "",
+                    }));
+                    setErrors((err) => ({
+                      ...err,
+                      shipmentType: undefined,
+                      shipmentTypeOther: undefined,
+                    }));
+                  }}
                 >
                   <option value="">Select shipment type</option>
                   {shipmentTypes.map((option) => (
@@ -319,6 +331,20 @@ export default function PostEnquiry() {
                 </select>
                 {errors.shipmentType && (
                   <p className="mt-1 text-xs text-red-600">{errors.shipmentType}</p>
+                )}
+                {form.shipmentType === OTHER_SHIPMENT_TYPE && (
+                  <div className="mt-2">
+                    <input
+                      className={plainInputClass}
+                      placeholder="Please specify the shipment type"
+                      value={form.shipmentTypeOther}
+                      onChange={(e) => update("shipmentTypeOther", e.target.value)}
+                      autoFocus
+                    />
+                    {errors.shipmentTypeOther && (
+                      <p className="mt-1 text-xs text-red-600">{errors.shipmentTypeOther}</p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
