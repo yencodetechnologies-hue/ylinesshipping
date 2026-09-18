@@ -40,6 +40,36 @@ const shipmentTypes: ShipmentType[] = [
 ];
 const OTHER_SHIPMENT_TYPE: ShipmentType = "OTHERS";
 
+type PackageType =
+  | "BAG"
+  | "BALES"
+  | "BOX"
+  | "BULK"
+  | "CASES"
+  | "CONTAINER"
+  | "CRATES"
+  | "DRUM"
+  | "PACKETS"
+  | "PALLETS"
+  | "UN PACKED"
+  | "OTHERS";
+
+const packageTypes: PackageType[] = [
+  "BAG",
+  "BALES",
+  "BOX",
+  "BULK",
+  "CASES",
+  "CONTAINER",
+  "CRATES",
+  "DRUM",
+  "PACKETS",
+  "PALLETS",
+  "UN PACKED",
+  "OTHERS",
+];
+const OTHER_PACKAGE_TYPE: PackageType = "OTHERS";
+
 interface PackageRow {
   id: string;
   netWeight: string;
@@ -89,7 +119,8 @@ interface FormState {
 
   commodity: string;
   hsCode: string;
-  packageType: string;
+  packageType: PackageType | "";
+  packageTypeOther: string;
   noOfPackages: string;
 
   handlingInstruction: string;
@@ -126,6 +157,7 @@ const initialForm: FormState = {
   commodity: "",
   hsCode: "",
   packageType: "",
+  packageTypeOther: "",
   noOfPackages: "",
 
   handlingInstruction: "",
@@ -212,6 +244,9 @@ export default function PostEnquiry() {
       next.portOfDischargeOther = "Please specify the port";
 
     if (!form.commodity.trim()) next.commodity = "Enter the commodity";
+    if (!form.packageType) next.packageType = "Select package type";
+    if (form.packageType === OTHER_PACKAGE_TYPE && !form.packageTypeOther.trim())
+      next.packageTypeOther = "Please specify the package type";
     if (!form.noOfPackages.trim()) next.noOfPackages = "Enter number of packages";
 
     setErrors(next);
@@ -277,7 +312,18 @@ export default function PostEnquiry() {
                 <select
                   className={plainInputClass}
                   value={form.enquiryType}
-                  onChange={(e) => update("enquiryType", e.target.value as EnquiryType)}
+                  onChange={(e) => {
+                    const value = e.target.value as EnquiryType;
+                    setForm((f) => ({
+                      ...f,
+                      enquiryType: value,
+                      portOfLoading: "",
+                      portOfLoadingOther: "",
+                      portOfDischarge: "",
+                      portOfDischargeOther: "",
+                    }));
+                    setErrors((err) => ({ ...err, enquiryType: undefined }));
+                  }}
                 >
                   <option value="">Select enquiry</option>
                   {services.map((service) => (
@@ -385,6 +431,7 @@ export default function PostEnquiry() {
                 <PortField
                   label="Port of Loading"
                   country={form.departureCountry}
+                  enquiryType={form.enquiryType}
                   value={form.portOfLoading}
                   otherValue={form.portOfLoadingOther}
                   error={errors.portOfLoading}
@@ -448,6 +495,7 @@ export default function PostEnquiry() {
                 <PortField
                   label="Port of Discharge"
                   country={form.arrivalCountry}
+                  enquiryType={form.enquiryType}
                   value={form.portOfDischarge}
                   otherValue={form.portOfDischargeOther}
                   error={errors.portOfDischarge}
@@ -593,18 +641,52 @@ export default function PostEnquiry() {
                   />
                 }
               />
-              <Field
-                label="Package Type"
-                icon={Package}
-                input={
-                  <input
-                    className={inputClass}
-                    placeholder="e.g. Carton, Pallet, Drum"
-                    value={form.packageType}
-                    onChange={(e) => update("packageType", e.target.value)}
-                  />
-                }
-              />
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-text-primary">
+                  Package Type
+                </label>
+                <select
+                  className={plainInputClass}
+                  value={form.packageType}
+                  onChange={(e) => {
+                    const value = e.target.value as PackageType | "";
+                    setForm((f) => ({
+                      ...f,
+                      packageType: value,
+                      packageTypeOther: value === OTHER_PACKAGE_TYPE ? f.packageTypeOther : "",
+                    }));
+                    setErrors((err) => ({
+                      ...err,
+                      packageType: undefined,
+                      packageTypeOther: undefined,
+                    }));
+                  }}
+                >
+                  <option value="">Select package type</option>
+                  {packageTypes.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                {errors.packageType && (
+                  <p className="mt-1 text-xs text-red-600">{errors.packageType}</p>
+                )}
+                {form.packageType === OTHER_PACKAGE_TYPE && (
+                  <div className="mt-2">
+                    <input
+                      className={plainInputClass}
+                      placeholder="Please specify the package type"
+                      value={form.packageTypeOther}
+                      onChange={(e) => update("packageTypeOther", e.target.value)}
+                      autoFocus
+                    />
+                    {errors.packageTypeOther && (
+                      <p className="mt-1 text-xs text-red-600">{errors.packageTypeOther}</p>
+                    )}
+                  </div>
+                )}
+              </div>
               <Field
                 label="No of Packages"
                 error={errors.noOfPackages}
@@ -905,6 +987,7 @@ function CountryField({
 interface PortFieldProps {
   label: string;
   country: string;
+  enquiryType: string;
   value: string;
   otherValue: string;
   error?: string;
@@ -915,13 +998,17 @@ interface PortFieldProps {
 
 /**
  * Port of Loading / Port of Discharge dropdown: options are fetched from
- * the selected country and shared as-is across every enquiry type (sea,
- * air, road, rail, courier). Falls back to a free-text field via "Others"
- * when a country has no ports on file, or the country isn't picked yet.
+ * the selected country. When the enquiry is "sea" only sea ports are
+ * listed, when it's "air" only airports are listed - same rule for both,
+ * so Air is treated exactly like Sea instead of showing a mixed list.
+ * Any other enquiry type shows every location unfiltered. Falls back to
+ * a free-text field via "Others" when there's nothing to list, or the
+ * country isn't picked yet.
  */
 function PortField({
   label,
   country,
+  enquiryType,
   value,
   otherValue,
   error,
@@ -929,7 +1016,7 @@ function PortField({
   onChange,
   onOtherChange,
 }: PortFieldProps) {
-  const portOptions = country ? getPortsForCountry(country) : [OTHER_PORT];
+  const portOptions = country ? getPortsForCountry(country, enquiryType) : [OTHER_PORT];
 
   return (
     <div>
