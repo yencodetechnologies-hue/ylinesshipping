@@ -313,16 +313,6 @@ function sanitizeDecimal(value: string): string {
   return cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, "");
 }
 
-/** Sea freight: 1 CBM = 1000 kg. */
-function seaVolumetricKg(cbm: number): number {
-  return cbm * 1000;
-}
-
-/** Air freight IATA: (L × B × H cm) / 6000 = CBM × (1,000,000 / 6000) ≈ 166.667 kg. */
-function airVolumetricKg(cbm: number): number {
-  return cbm * (1_000_000 / 6000);
-}
-
 export default function PostEnquiry() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [rows, setRows] = useState<PackageRow[]>([newRow(), newRow(), newRow()]);
@@ -373,25 +363,13 @@ export default function PostEnquiry() {
 
   const totals = rows.reduce(
     (acc, row) => {
-      const cbm = numeric(row.cbm);
       acc.netWeight += numeric(row.netWeight);
       acc.grossWeight += numeric(row.grossWeight);
-      acc.volume += cbm;
-      acc.seaVolumetric += seaVolumetricKg(cbm);
-      acc.airVolumetric += airVolumetricKg(cbm);
+      acc.volume += numeric(row.cbm);
       return acc;
     },
-    { netWeight: 0, grossWeight: 0, volume: 0, seaVolumetric: 0, airVolumetric: 0 }
+    { netWeight: 0, grossWeight: 0, volume: 0 }
   );
-
-  const isAirEnquiry = form.enquiryType === "air";
-  const isSeaEnquiry = form.enquiryType === "sea";
-  const selectedVolumetric = isAirEnquiry
-    ? totals.airVolumetric
-    : isSeaEnquiry
-      ? totals.seaVolumetric
-      : 0;
-  const chargeableWeight = Math.max(totals.grossWeight, selectedVolumetric);
 
   function validate(): boolean {
     const next: Partial<Record<keyof FormState, string>> = {};
@@ -1135,61 +1113,6 @@ export default function PostEnquiry() {
                   </tr>
                 </tfoot>
               </table>
-            </div>
-
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg border border-border bg-app-bg px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
-                  Total CBM
-                </p>
-                <p className="mt-0.5 text-sm font-semibold text-text-primary">
-                  {totals.volume.toFixed(3)} m³
-                </p>
-                <p className="text-[11px] text-text-secondary">Entered volume per row</p>
-              </div>
-              <div
-                className={`rounded-lg border px-3 py-2 ${
-                  isSeaEnquiry ? "border-primary bg-primary/5" : "border-border bg-app-bg"
-                }`}
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
-                  Sea volumetric wt
-                </p>
-                <p className="mt-0.5 text-sm font-semibold text-text-primary">
-                  {totals.seaVolumetric.toFixed(2)} kg
-                </p>
-                <p className="text-[11px] text-text-secondary">CBM × 1000 (1 CBM = 1000 kg)</p>
-              </div>
-              <div
-                className={`rounded-lg border px-3 py-2 ${
-                  isAirEnquiry ? "border-primary bg-primary/5" : "border-border bg-app-bg"
-                }`}
-              >
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
-                  Air volumetric wt
-                </p>
-                <p className="mt-0.5 text-sm font-semibold text-text-primary">
-                  {totals.airVolumetric.toFixed(2)} kg
-                </p>
-                <p className="text-[11px] text-text-secondary">CBM × 166.667 (IATA ÷ 6000)</p>
-              </div>
-              <div className="rounded-lg border border-border bg-app-bg px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
-                  Chargeable weight
-                </p>
-                <p className="mt-0.5 text-sm font-semibold text-text-primary">
-                  {isSeaEnquiry || isAirEnquiry
-                    ? `${chargeableWeight.toFixed(2)} kg`
-                    : "—"}
-                </p>
-                <p className="text-[11px] text-text-secondary">
-                  {isAirEnquiry
-                    ? "Max of gross wt and air volumetric wt"
-                    : isSeaEnquiry
-                      ? "Max of gross wt and sea volumetric wt"
-                      : "Select Sea or Air enquiry type"}
-                </p>
-              </div>
             </div>
           </Section>
 
