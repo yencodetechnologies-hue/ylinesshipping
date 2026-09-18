@@ -93,6 +93,36 @@ const paymentTypes: PaymentType[] = [
 ];
 const OTHER_PAYMENT_TYPE: PaymentType = "OTHERS";
 
+type IncoTerm =
+  | "EXW (Ex Works)"
+  | "FCA (Free Carrier)"
+  | "CPT (Carriage Paid To)"
+  | "CIP (Carriage and Insurance Paid To)"
+  | "DAP (Delivered at Place)"
+  | "DPU (Delivered at Place Unloaded)"
+  | "DDP (Delivered Duty Paid)"
+  | "FAS (Free Alongside Ship)"
+  | "FOB (Free on Board)"
+  | "CFR (Cost and Freight)"
+  | "CIF (Cost, Insurance, and Freight)"
+  | "OTHERS";
+
+const incoTerms: IncoTerm[] = [
+  "EXW (Ex Works)",
+  "FCA (Free Carrier)",
+  "CPT (Carriage Paid To)",
+  "CIP (Carriage and Insurance Paid To)",
+  "DAP (Delivered at Place)",
+  "DPU (Delivered at Place Unloaded)",
+  "DDP (Delivered Duty Paid)",
+  "FAS (Free Alongside Ship)",
+  "FOB (Free on Board)",
+  "CFR (Cost and Freight)",
+  "CIF (Cost, Insurance, and Freight)",
+  "OTHERS",
+];
+const OTHER_INCO_TERM: IncoTerm = "OTHERS";
+
 interface PackageRow {
   id: string;
   netWeight: string;
@@ -136,7 +166,8 @@ interface FormState {
   arrivalPostalCode: string;
 
   shipmentDate: string;
-  incoTerm: string;
+  incoTerm: IncoTerm | "";
+  incoTermOther: string;
   preferredLine: string;
   paymentType: PaymentType | "";
   paymentTypeOther: string;
@@ -177,6 +208,7 @@ const initialForm: FormState = {
 
   shipmentDate: "",
   incoTerm: "",
+  incoTermOther: "",
   preferredLine: "",
   paymentType: "",
   paymentTypeOther: "",
@@ -277,6 +309,9 @@ export default function PostEnquiry() {
     if (!form.placeOfDelivery) next.placeOfDelivery = "Select place of delivery";
     if (form.placeOfDelivery === OTHER_CITY && !form.placeOfDeliveryOther.trim())
       next.placeOfDeliveryOther = "Please specify the city";
+
+    if (form.incoTerm === OTHER_INCO_TERM && !form.incoTermOther.trim())
+      next.incoTermOther = "Please specify the inco term";
 
     if (!form.commodity.trim()) next.commodity = "Enter the commodity";
     if (!form.packageType) next.packageType = "Select package type";
@@ -594,18 +629,56 @@ export default function PostEnquiry() {
                   />
                 }
               />
-              <Field
-                label="Inco Term"
-                icon={FileText}
-                input={
-                  <input
-                    className={inputClass}
-                    placeholder="e.g. FOB, CIF, EXW"
-                    value={form.incoTerm}
-                    onChange={(e) => update("incoTerm", e.target.value.toUpperCase())}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-text-primary">
+                  Inco Term
+                </label>
+                <div className="relative">
+                  <FileText
+                    size={15}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
                   />
-                }
-              />
+                  <select
+                    className={inputClass}
+                    value={form.incoTerm}
+                    onChange={(e) => {
+                      const value = e.target.value as IncoTerm | "";
+                      setForm((f) => ({
+                        ...f,
+                        incoTerm: value,
+                        incoTermOther: value === OTHER_INCO_TERM ? f.incoTermOther : "",
+                      }));
+                      setErrors((err) => ({
+                        ...err,
+                        incoTerm: undefined,
+                        incoTermOther: undefined,
+                      }));
+                    }}
+                  >
+                    <option value="">Select inco term</option>
+                    {incoTerms.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {errors.incoTerm && <p className="mt-1 text-xs text-red-600">{errors.incoTerm}</p>}
+                {form.incoTerm === OTHER_INCO_TERM && (
+                  <div className="mt-2">
+                    <input
+                      className={plainInputClass}
+                      placeholder="Please specify the inco term"
+                      value={form.incoTermOther}
+                      onChange={(e) => update("incoTermOther", e.target.value)}
+                      autoFocus
+                    />
+                    {errors.incoTermOther && (
+                      <p className="mt-1 text-xs text-red-600">{errors.incoTermOther}</p>
+                    )}
+                  </div>
+                )}
+              </div>
               <Field
                 label="Preferred Line"
                 icon={Ship}
