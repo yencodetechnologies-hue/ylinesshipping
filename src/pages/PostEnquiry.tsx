@@ -21,6 +21,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { getCitiesForCountry, OTHER_CITY } from "../data/cities";
 import { countryOptions, OTHER_COUNTRY } from "../data/locations";
 import { getPortsForCountry, OTHER_PORT } from "../data/ports";
 import { services } from "../data/services";
@@ -101,6 +102,7 @@ interface FormState {
   portOfLoading: string;
   portOfLoadingOther: string;
   placeOfOrigin: string;
+  placeOfOriginOther: string;
   departurePostalCode: string;
 
   arrivalCountry: string;
@@ -108,6 +110,7 @@ interface FormState {
   portOfDischarge: string;
   portOfDischargeOther: string;
   placeOfDelivery: string;
+  placeOfDeliveryOther: string;
   arrivalPostalCode: string;
 
   shipmentDate: string;
@@ -138,6 +141,7 @@ const initialForm: FormState = {
   portOfLoading: "",
   portOfLoadingOther: "",
   placeOfOrigin: "",
+  placeOfOriginOther: "",
   departurePostalCode: "",
 
   arrivalCountry: "",
@@ -145,6 +149,7 @@ const initialForm: FormState = {
   portOfDischarge: "",
   portOfDischargeOther: "",
   placeOfDelivery: "",
+  placeOfDeliveryOther: "",
   arrivalPostalCode: "",
 
   shipmentDate: "",
@@ -235,6 +240,9 @@ export default function PostEnquiry() {
     if (!form.portOfLoading) next.portOfLoading = "Select port of loading";
     if (form.portOfLoading === OTHER_PORT && !form.portOfLoadingOther.trim())
       next.portOfLoadingOther = "Please specify the port";
+    if (!form.placeOfOrigin) next.placeOfOrigin = "Select place of origin";
+    if (form.placeOfOrigin === OTHER_CITY && !form.placeOfOriginOther.trim())
+      next.placeOfOriginOther = "Please specify the city";
 
     if (!form.arrivalCountry) next.arrivalCountry = "Select arrival country";
     if (form.arrivalCountry === OTHER_COUNTRY && !form.arrivalCountryOther.trim())
@@ -242,6 +250,9 @@ export default function PostEnquiry() {
     if (!form.portOfDischarge) next.portOfDischarge = "Select port of discharge";
     if (form.portOfDischarge === OTHER_PORT && !form.portOfDischargeOther.trim())
       next.portOfDischargeOther = "Please specify the port";
+    if (!form.placeOfDelivery) next.placeOfDelivery = "Select place of delivery";
+    if (form.placeOfDelivery === OTHER_CITY && !form.placeOfDeliveryOther.trim())
+      next.placeOfDeliveryOther = "Please specify the city";
 
     if (!form.commodity.trim()) next.commodity = "Enter the commodity";
     if (!form.packageType) next.packageType = "Select package type";
@@ -424,6 +435,8 @@ export default function PostEnquiry() {
                       departureCountryOther: v === OTHER_COUNTRY ? f.departureCountryOther : "",
                       portOfLoading: "",
                       portOfLoadingOther: "",
+                      placeOfOrigin: "",
+                      placeOfOriginOther: "",
                     }))
                   }
                   onOtherChange={(v) => update("departureCountryOther", v)}
@@ -445,17 +458,21 @@ export default function PostEnquiry() {
                   }
                   onOtherChange={(v) => update("portOfLoadingOther", v)}
                 />
-                <Field
+                <CityField
                   label="Place of Origin"
-                  icon={MapPin}
-                  input={
-                    <input
-                      className={inputClass}
-                      placeholder="City(pickup location)"
-                      value={form.placeOfOrigin}
-                      onChange={(e) => update("placeOfOrigin", e.target.value)}
-                    />
+                  country={form.departureCountry}
+                  value={form.placeOfOrigin}
+                  otherValue={form.placeOfOriginOther}
+                  error={errors.placeOfOrigin}
+                  otherError={errors.placeOfOriginOther}
+                  onChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      placeOfOrigin: v,
+                      placeOfOriginOther: v === OTHER_CITY ? f.placeOfOriginOther : "",
+                    }))
                   }
+                  onOtherChange={(v) => update("placeOfOriginOther", v)}
                 />
                 <Field
                   label="Postal Code"
@@ -488,6 +505,8 @@ export default function PostEnquiry() {
                       arrivalCountryOther: v === OTHER_COUNTRY ? f.arrivalCountryOther : "",
                       portOfDischarge: "",
                       portOfDischargeOther: "",
+                      placeOfDelivery: "",
+                      placeOfDeliveryOther: "",
                     }))
                   }
                   onOtherChange={(v) => update("arrivalCountryOther", v)}
@@ -509,17 +528,21 @@ export default function PostEnquiry() {
                   }
                   onOtherChange={(v) => update("portOfDischargeOther", v)}
                 />
-                <Field
+                <CityField
                   label="Place of Delivery"
-                  icon={MapPin}
-                  input={
-                    <input
-                      className={inputClass}
-                      placeholder="City Delivery location"
-                      value={form.placeOfDelivery}
-                      onChange={(e) => update("placeOfDelivery", e.target.value)}
-                    />
+                  country={form.arrivalCountry}
+                  value={form.placeOfDelivery}
+                  otherValue={form.placeOfDeliveryOther}
+                  error={errors.placeOfDelivery}
+                  otherError={errors.placeOfDeliveryOther}
+                  onChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      placeOfDelivery: v,
+                      placeOfDeliveryOther: v === OTHER_CITY ? f.placeOfDeliveryOther : "",
+                    }))
                   }
+                  onOtherChange={(v) => update("placeOfDeliveryOther", v)}
                 />
                 <Field
                   label="Postal Code"
@@ -1056,6 +1079,77 @@ function PortField({
           <input
             className={plainInputClass}
             placeholder="Please specify the port"
+            value={otherValue}
+            onChange={(e) => onOtherChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.preventDefault();
+            }}
+            autoFocus
+          />
+          {otherError && <p className="mt-1 text-xs text-red-600">{otherError}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface CityFieldProps {
+  label: string;
+  country: string;
+  value: string;
+  otherValue: string;
+  error?: string;
+  otherError?: string;
+  onChange: (value: string) => void;
+  onOtherChange: (value: string) => void;
+}
+
+/**
+ * Place of Origin / Place of Delivery dropdown: lists every city for the
+ * selected country, falling back to a free-text field via "Others" when
+ * the city isn't listed, or the country isn't picked yet.
+ */
+function CityField({
+  label,
+  country,
+  value,
+  otherValue,
+  error,
+  otherError,
+  onChange,
+  onOtherChange,
+}: CityFieldProps) {
+  const cityOptions = country ? getCitiesForCountry(country) : [OTHER_CITY];
+
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-text-primary">{label}</label>
+      <div className="relative">
+        <MapPin
+          size={15}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
+        />
+        <select
+          className={inputClass}
+          value={value}
+          disabled={!country}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">{country ? "Select city" : "Select country first"}</option>
+          {cityOptions.map((city) => (
+            <option key={city} value={city}>
+              {city}
+            </option>
+          ))}
+        </select>
+      </div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+
+      {value === OTHER_CITY && (
+        <div className="mt-2">
+          <input
+            className={plainInputClass}
+            placeholder="Please specify the city"
             value={otherValue}
             onChange={(e) => onOtherChange(e.target.value)}
             onKeyDown={(e) => {
