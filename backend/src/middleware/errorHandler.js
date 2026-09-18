@@ -5,7 +5,7 @@ export function notFound(req, res, next) {
 
 // eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, next) {
-  const status = res.statusCode && res.statusCode !== 200 ? res.statusCode : 500;
+  const status = err.status || (res.statusCode && res.statusCode !== 200 ? res.statusCode : 500);
 
   if (err.name === "ValidationError") {
     return res.status(400).json({

@@ -918,7 +918,7 @@ export default function PostEnquiry() {
                 input={
                   <input
                     className={inputClass}
-                    placeholder="e.g. Cotton textiles"
+                    placeholder="e.g. Product category"
                     value={form.commodity}
                     onChange={(e) => update("commodity", e.target.value)}
                   />
@@ -930,7 +930,7 @@ export default function PostEnquiry() {
                 input={
                   <input
                     className={inputClass}
-                    placeholder="e.g. 5208.11"
+                    placeholder=" Section (chapter) e.g. 5208.11"
                     value={form.hsCode}
                     onChange={(e) => update("hsCode", e.target.value)}
                   />
