@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { countryOptions, OTHER_COUNTRY } from "../data/locations";
+import { getPortsForCountry, OTHER_PORT } from "../data/ports";
 import { services } from "../data/services";
 
 type EnquiryType = (typeof services)[number]["id"];
@@ -68,12 +69,14 @@ interface FormState {
   departureCountry: string;
   departureCountryOther: string;
   portOfLoading: string;
+  portOfLoadingOther: string;
   placeOfOrigin: string;
   departurePostalCode: string;
 
   arrivalCountry: string;
   arrivalCountryOther: string;
   portOfDischarge: string;
+  portOfDischargeOther: string;
   placeOfDelivery: string;
   arrivalPostalCode: string;
 
@@ -102,12 +105,14 @@ const initialForm: FormState = {
   departureCountry: "",
   departureCountryOther: "",
   portOfLoading: "",
+  portOfLoadingOther: "",
   placeOfOrigin: "",
   departurePostalCode: "",
 
   arrivalCountry: "",
   arrivalCountryOther: "",
   portOfDischarge: "",
+  portOfDischargeOther: "",
   placeOfDelivery: "",
   arrivalPostalCode: "",
 
@@ -195,12 +200,16 @@ export default function PostEnquiry() {
     if (!form.departureCountry) next.departureCountry = "Select departure country";
     if (form.departureCountry === OTHER_COUNTRY && !form.departureCountryOther.trim())
       next.departureCountryOther = "Please specify the country";
-    if (!form.portOfLoading.trim()) next.portOfLoading = "Enter port of loading";
+    if (!form.portOfLoading) next.portOfLoading = "Select port of loading";
+    if (form.portOfLoading === OTHER_PORT && !form.portOfLoadingOther.trim())
+      next.portOfLoadingOther = "Please specify the port";
 
     if (!form.arrivalCountry) next.arrivalCountry = "Select arrival country";
     if (form.arrivalCountry === OTHER_COUNTRY && !form.arrivalCountryOther.trim())
       next.arrivalCountryOther = "Please specify the country";
-    if (!form.portOfDischarge.trim()) next.portOfDischarge = "Enter port of discharge";
+    if (!form.portOfDischarge) next.portOfDischarge = "Select port of discharge";
+    if (form.portOfDischarge === OTHER_PORT && !form.portOfDischargeOther.trim())
+      next.portOfDischargeOther = "Please specify the port";
 
     if (!form.commodity.trim()) next.commodity = "Enter the commodity";
     if (!form.noOfPackages.trim()) next.noOfPackages = "Enter number of packages";
@@ -367,22 +376,27 @@ export default function PostEnquiry() {
                       ...f,
                       departureCountry: v,
                       departureCountryOther: v === OTHER_COUNTRY ? f.departureCountryOther : "",
+                      portOfLoading: "",
+                      portOfLoadingOther: "",
                     }))
                   }
                   onOtherChange={(v) => update("departureCountryOther", v)}
                 />
-                <Field
+                <PortField
                   label="Port of Loading"
+                  country={form.departureCountry}
+                  value={form.portOfLoading}
+                  otherValue={form.portOfLoadingOther}
                   error={errors.portOfLoading}
-                  icon={Anchor}
-                  input={
-                    <input
-                      className={inputClass}
-                      placeholder="e.g. Nhava Sheva (INNSA)"
-                      value={form.portOfLoading}
-                      onChange={(e) => update("portOfLoading", e.target.value)}
-                    />
+                  otherError={errors.portOfLoadingOther}
+                  onChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      portOfLoading: v,
+                      portOfLoadingOther: v === OTHER_PORT ? f.portOfLoadingOther : "",
+                    }))
                   }
+                  onOtherChange={(v) => update("portOfLoadingOther", v)}
                 />
                 <Field
                   label="Place of Origin"
@@ -425,22 +439,27 @@ export default function PostEnquiry() {
                       ...f,
                       arrivalCountry: v,
                       arrivalCountryOther: v === OTHER_COUNTRY ? f.arrivalCountryOther : "",
+                      portOfDischarge: "",
+                      portOfDischargeOther: "",
                     }))
                   }
                   onOtherChange={(v) => update("arrivalCountryOther", v)}
                 />
-                <Field
+                <PortField
                   label="Port of Discharge"
+                  country={form.arrivalCountry}
+                  value={form.portOfDischarge}
+                  otherValue={form.portOfDischargeOther}
                   error={errors.portOfDischarge}
-                  icon={Anchor}
-                  input={
-                    <input
-                      className={inputClass}
-                      placeholder="e.g. Jebel Ali (AEJEA)"
-                      value={form.portOfDischarge}
-                      onChange={(e) => update("portOfDischarge", e.target.value)}
-                    />
+                  otherError={errors.portOfDischargeOther}
+                  onChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      portOfDischarge: v,
+                      portOfDischargeOther: v === OTHER_PORT ? f.portOfDischargeOther : "",
+                    }))
                   }
+                  onOtherChange={(v) => update("portOfDischargeOther", v)}
                 />
                 <Field
                   label="Place of Delivery"
@@ -869,6 +888,78 @@ function CountryField({
           <input
             className={plainInputClass}
             placeholder="Please specify the country"
+            value={otherValue}
+            onChange={(e) => onOtherChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.preventDefault();
+            }}
+            autoFocus
+          />
+          {otherError && <p className="mt-1 text-xs text-red-600">{otherError}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface PortFieldProps {
+  label: string;
+  country: string;
+  value: string;
+  otherValue: string;
+  error?: string;
+  otherError?: string;
+  onChange: (value: string) => void;
+  onOtherChange: (value: string) => void;
+}
+
+/**
+ * Port of Loading / Port of Discharge dropdown: options are fetched from
+ * the selected country and shared as-is across every enquiry type (sea,
+ * air, road, rail, courier). Falls back to a free-text field via "Others"
+ * when a country has no ports on file, or the country isn't picked yet.
+ */
+function PortField({
+  label,
+  country,
+  value,
+  otherValue,
+  error,
+  otherError,
+  onChange,
+  onOtherChange,
+}: PortFieldProps) {
+  const portOptions = country ? getPortsForCountry(country) : [OTHER_PORT];
+
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-text-primary">{label}</label>
+      <div className="relative">
+        <Anchor
+          size={15}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
+        />
+        <select
+          className={inputClass}
+          value={value}
+          disabled={!country}
+          onChange={(e) => onChange(e.target.value)}
+        >
+          <option value="">{country ? "Select port" : "Select country first"}</option>
+          {portOptions.map((port) => (
+            <option key={port} value={port}>
+              {port}
+            </option>
+          ))}
+        </select>
+      </div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+
+      {value === OTHER_PORT && (
+        <div className="mt-2">
+          <input
+            className={plainInputClass}
+            placeholder="Please specify the port"
             value={otherValue}
             onChange={(e) => onOtherChange(e.target.value)}
             onKeyDown={(e) => {
