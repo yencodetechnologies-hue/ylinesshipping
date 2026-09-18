@@ -18,7 +18,9 @@ const isoByCountryName = new Map(
   Country.getAllCountries().map((c) => [c.name, c.isoCode])
 );
 
-function suffixFor(type: PortRecord["t"]): string {
+function suffixFor(type: PortRecord["t"], enquiryType?: string): string {
+  if (enquiryType === "sea") return "Sea Port";
+  if (enquiryType === "air") return "Airport";
   if (type === 3) return "Sea/Air";
   if (type === 2) return "Airport";
   return "Sea Port";
@@ -30,11 +32,11 @@ function suffixFor(type: PortRecord["t"]): string {
  * country is covered. Used identically for Port of Loading and Port of
  * Discharge.
  *
- * When `enquiryType` is "sea" only sea ports are shown; when it's "air"
- * only airports are shown - the same filtering rule applies to both, so
- * Air gets the same treatment as Sea rather than a mix of both. For any
- * other enquiry type (road, rail, courier, ...) the port/mode concept
- * doesn't apply, so every location is shown unfiltered.
+ * When `enquiryType` is "sea" only sea-capable ports are shown (label:
+ * "Sea Port", never "Air"); when it's "air" only air-capable ports are
+ * shown (label: "Airport"). Dual-mode locations still appear because they
+ * serve that mode, but the unused mode is not shown in the label. For any
+ * other enquiry type the list is unfiltered.
  */
 export function getPortsForCountry(countryName: string, enquiryType?: string): string[] {
   const isoCode = isoByCountryName.get(countryName);
@@ -50,7 +52,7 @@ export function getPortsForCountry(countryName: string, enquiryType?: string): s
 
   if (filtered.length === 0) return [OTHER_PORT];
 
-  const formatted = filtered.map((p) => `${p.n} (${p.c}) – ${suffixFor(p.t)}`);
+  const formatted = filtered.map((p) => `${p.n} (${p.c}) – ${suffixFor(p.t, enquiryType)}`);
 
   return [...formatted, OTHER_PORT];
 }
